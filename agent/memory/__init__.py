@@ -1,0 +1,1 @@
+"""Explicit memory module placeholder."""
