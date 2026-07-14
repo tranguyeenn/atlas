@@ -27,6 +27,69 @@ CREATE TABLE IF NOT EXISTS chunks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON chunks(file_id);
+
+CREATE TABLE IF NOT EXISTS entities (
+    id INTEGER PRIMARY KEY,
+    type TEXT NOT NULL CHECK (
+        type IN (
+            'Project',
+            'Task',
+            'Deliverable',
+            'Goal',
+            'Decision',
+            'Concept',
+            'Research Topic',
+            'Book',
+            'Course',
+            'Repository',
+            'Journal Entry',
+            'Person',
+            'Event',
+            'File'
+        )
+    ),
+    name TEXT NOT NULL,
+    description TEXT,
+    source_file_id INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(type, name),
+    FOREIGN KEY(source_file_id) REFERENCES files(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS entity_relationships (
+    id INTEGER PRIMARY KEY,
+    source_entity_id INTEGER NOT NULL,
+    target_entity_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    evidence_chunk_id INTEGER,
+    created_at TEXT NOT NULL,
+    UNIQUE(source_entity_id, target_entity_id, type, evidence_chunk_id),
+    FOREIGN KEY(source_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
+    FOREIGN KEY(target_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
+    FOREIGN KEY(evidence_chunk_id) REFERENCES chunks(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(type);
+CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name);
+CREATE INDEX IF NOT EXISTS idx_entity_relationships_source
+    ON entity_relationships(source_entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relationships_target
+    ON entity_relationships(target_entity_id);
+
+CREATE TABLE IF NOT EXISTS entity_attributes (
+    id INTEGER PRIMARY KEY,
+    entity_id INTEGER NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(entity_id, key),
+    FOREIGN KEY(entity_id) REFERENCES entities(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_entity_attributes_key
+    ON entity_attributes(key);
 """
 
 

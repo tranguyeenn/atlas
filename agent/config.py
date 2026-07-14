@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 OBSIDIAN_VAULT_PATH_HELP = (
     "OBSIDIAN_VAULT_PATH is not configured. Open your vault in Obsidian, reveal "
@@ -18,18 +20,13 @@ class ObsidianVaultPathError(ValueError):
     pass
 
 
-def _load_dotenv(path: Path) -> None:
-    if not path.exists():
-        return
+DEFAULT_CHAT_MODEL = "qwen3:4b"
+DEFAULT_EMBEDDING_MODEL = "embeddinggemma:latest"
 
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        os.environ.setdefault(key, value)
+
+def load_environment(env_file: Path = Path(".env")) -> None:
+    if env_file.exists():
+        load_dotenv(dotenv_path=env_file, override=True)
 
 
 @dataclass(frozen=True)
@@ -40,21 +37,27 @@ class Settings:
     database_path: Path
     obsidian_vault_path: Path | None
     default_top_k: int
+    min_top_score: float
+    min_average_score: float
+    min_meaningful_content_chars: int
 
 
 def get_settings() -> Settings:
-    _load_dotenv(Path(".env"))
+    load_environment()
 
     vault_path = os.getenv("OBSIDIAN_VAULT_PATH")
     database_path = Path(os.getenv("DATABASE_PATH", "data/atlas.db"))
 
     return Settings(
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        chat_model=os.getenv("OLLAMA_CHAT_MODEL", "qwen3:8b"),
-        embedding_model=os.getenv("OLLAMA_EMBEDDING_MODEL", "embeddinggemma"),
+        chat_model=os.getenv("OLLAMA_CHAT_MODEL", DEFAULT_CHAT_MODEL),
+        embedding_model=os.getenv("OLLAMA_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
         database_path=database_path,
         obsidian_vault_path=Path(vault_path).expanduser() if vault_path else None,
         default_top_k=int(os.getenv("DEFAULT_TOP_K", "5")),
+        min_top_score=float(os.getenv("MIN_TOP_SCORE", "0.35")),
+        min_average_score=float(os.getenv("MIN_AVERAGE_SCORE", "0.25")),
+        min_meaningful_content_chars=int(os.getenv("MIN_MEANINGFUL_CONTENT_CHARS", "40")),
     )
 
 

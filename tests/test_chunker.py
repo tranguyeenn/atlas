@@ -18,3 +18,11 @@ def test_chunk_markdown_by_headings_ignores_empty_chunks() -> None:
     chunks = chunk_markdown_by_headings(markdown)
 
     assert [chunk.heading for chunk in chunks] == ["First", "Second"]
+
+
+def test_chunk_markdown_by_headings_preserves_checkbox_markers() -> None:
+    markdown = "# Tasks\n- [x] completed\n- [ ] incomplete"
+
+    chunks = chunk_markdown_by_headings(markdown)
+
+    assert chunks[0].content == "# Tasks\n- [x] completed\n- [ ] incomplete"

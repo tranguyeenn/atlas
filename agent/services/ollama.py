@@ -37,8 +37,21 @@ class OllamaClient:
             embedding = embeddings[0]
         return [float(value) for value in embedding]
 
-    async def chat(self, messages: list[dict[str, str]]) -> str:
-        payload = {"model": self.chat_model, "messages": messages, "stream": False}
+    async def chat(self, messages: list[dict[str, str]], json_mode: bool = False) -> str:
+        payload = {
+            "model": self.chat_model,
+            "messages": messages,
+            "stream": False,
+            "keep_alive": "15m",
+            "think": False,
+            "options": {
+                "temperature": 0,
+                "num_predict": 300,
+                "num_ctx": 4096,
+            },
+        }
+        if json_mode:
+            payload["format"] = "json"
         response = await asyncio.to_thread(self._post_json, "/api/chat", payload)
         message = response.get("message")
         if not isinstance(message, dict) or not isinstance(message.get("content"), str):

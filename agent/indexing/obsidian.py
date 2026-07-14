@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent.indexing.chunker import chunk_markdown_by_headings
+from agent.indexing.entities import IndexedChunk, delete_entities_for_file, extract_entities_for_file
 from agent.services.ollama import OllamaClient
 
 
@@ -64,6 +65,7 @@ class ObsidianIndexer:
         with self.connection:
             if existing:
                 file_id = int(existing["id"])
+                delete_entities_for_file(self.connection, file_id)
                 self.connection.execute("DELETE FROM chunks WHERE file_id = ?", (file_id,))
                 self.connection.execute(
                     """
@@ -83,15 +85,31 @@ class ObsidianIndexer:
                 )
                 file_id = int(cursor.lastrowid)
 
+            indexed_chunks: list[IndexedChunk] = []
             for index, chunk in enumerate(chunks):
                 embedding = await self.ollama.embed(chunk.content)
-                self.connection.execute(
+                cursor = self.connection.execute(
                     """
                     INSERT INTO chunks(file_id, heading, content, embedding, chunk_index, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (file_id, chunk.heading, chunk.content, json.dumps(embedding), index, now),
                 )
+                indexed_chunks.append(
+                    IndexedChunk(
+                        id=int(cursor.lastrowid),
+                        heading=chunk.heading,
+                        content=chunk.content,
+                        chunk_index=index,
+                    )
+                )
+
+            extract_entities_for_file(
+                self.connection,
+                file_id=file_id,
+                path=path,
+                chunks=indexed_chunks,
+            )
 
         return len(chunks)
 
